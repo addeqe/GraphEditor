@@ -5,7 +5,7 @@ import ResizableNodeSelected from './components/ResizableNodeSelected';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
 import { Link } from '@chakra-ui/react';
-import { saveEdges, saveNodes, loadFlowFromDB } from './neo4j/neo4jService';
+import { saveEdges, saveNodes, loadFlowFromDB, deleteNodes, deleteEdges } from './neo4j/neo4jService';
 import { useFlowHandlers } from './components/useCallback';
 
 export default function App() {
@@ -75,6 +75,19 @@ const changeLabel = (e) => {
     await saveEdges(edges);
   };
 
+  const deleteEdgesOrNodes = async () =>
+  {
+    const deletedNodes = nodes.filter((n) => n.selected);
+    const deletedEdges = edges.filter((e) => e.selected);
+    const newNodes = nodes.filter((n) => !n.selected);
+    const newEdges = edges.filter((e) => !e.selected);
+    await deleteNodes(deletedNodes);
+    await deleteEdges(deletedEdges);
+
+    setNodes(newNodes);
+    setEdges(newEdges);
+}
+
   useEffect(() => {
   const loadFlow = async () => {
     const { nodes, edges } = await loadFlowFromDB();
@@ -93,8 +106,8 @@ const changeLabel = (e) => {
   <option value="ResizableNodeSelected">Resizeable</option>
       </select> 
       <button onClick={addNode}>Add Node</button>
-      <button onClick={() => { setNodes((nds) => nds.filter((n) => !n.selected)); setEdges((eds) => eds.filter((e) => !e.selected));}}>Delete node/edge</button>
-      <label>Change Node Name:</label><input type="text" /*value={selectedNode?.data.label} */onChange={changeLabel }/>
+      <button onClick={deleteEdgesOrNodes}>Delete Node/Edge</button>
+      <label>Change Node Name:</label><input type="text" /*value={selectedNode?.data.label} */ onChange={changeLabel} />
       <input type="number" value={nrOfNodes} onChange={(e) => setNrOfNodes(Number(e.target.value))} /><button onClick={addNrOfNodes}>Add {nrOfNodes} Nodes</button>
       <button onClick={handleSave}>Save</button>
 

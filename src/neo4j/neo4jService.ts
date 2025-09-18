@@ -45,6 +45,44 @@ export const saveEdges = async (edges: Edge[]) => {
   }
 };
 
+export const deleteNodes =  async (nodesToDelete: Node[]) => {
+  const session = getSession();
+  try {
+    for (const nodeToDelete of nodesToDelete) {
+      await session.run(
+        `
+        MATCH (n:Node {id: $id})
+         DETACH DELETE n;`,
+          {
+          id: nodeToDelete.id,
+        }
+      );
+    }
+  } finally {
+    await session.close();
+  }
+};
+
+
+export const deleteEdges = async (edgesToDelete: Edge[]) => {
+  const session = getSession();
+  try {
+    for (const edgeToDelete of edgesToDelete) {
+      await session.run(
+        `
+        MATCH ()-[e]-()
+        WHERE e.id = $id
+        DELETE e;`,
+          {
+          id: edgeToDelete.id,
+        }
+      );
+    }
+  } finally {
+    await session.close();
+  }
+};
+
 
 export const loadFlowFromDB = async (): Promise<{ nodes: Node[], edges: Edge[] }> => {
   const session = getSession();

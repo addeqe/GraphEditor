@@ -1,0 +1,11 @@
+MATCH (n:Node)
+RETURN n.id AS id, n.label AS label, n.x AS x, n.y AS y
+
+
+MATCH (source:Node)-[edge:CONNECTED]->(target:Node)
+RETURN 
+    edge.id AS id,
+    edge.type AS type,
+    edge.markerEnd AS markerEnd,
+    source.id AS source,
+    target.id AS target
