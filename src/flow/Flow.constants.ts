@@ -36,6 +36,7 @@ export const initialNodes: Node[] = [
         data: { label: "Node 2" },
     },
 ];
+
 export const initialEdges: Edge[] = [
     {
         id: "1-2",
@@ -47,3 +48,4 @@ export const initialEdges: Edge[] = [
         }
     },
 ];
+

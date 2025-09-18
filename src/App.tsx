@@ -4,7 +4,6 @@ import '@xyflow/react/dist/style.css';
 import ResizableNodeSelected from './components/ResizableNodeSelected';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
-import { Link } from '@chakra-ui/react';
 import { saveEdges, saveNodes, loadFlowFromDB, deleteNodes, deleteEdges } from './neo4j/neo4jService';
 import { useFlowHandlers } from './components/useCallback';
 
@@ -68,8 +67,7 @@ const changeLabel = (e) => {
 
   const selectedX = selectedNode?.position.x;
   const selectedY = selectedNode?.position.y;
-  console.log("Nodens position:", selectedX, selectedY)
-
+  
   const handleSave = async () => {
     await saveNodes(nodes);
     await saveEdges(edges);
@@ -77,13 +75,19 @@ const changeLabel = (e) => {
 
   const deleteEdgesOrNodes = async () =>
   {
+    //databas
     const deletedNodes = nodes.filter((n) => n.selected);
     const deletedEdges = edges.filter((e) => e.selected);
+
+    //reactflow
     const newNodes = nodes.filter((n) => !n.selected);
     const newEdges = edges.filter((e) => !e.selected);
+
+    //databas
     await deleteNodes(deletedNodes);
     await deleteEdges(deletedEdges);
 
+    //reactflow
     setNodes(newNodes);
     setEdges(newEdges);
 }
@@ -107,8 +111,9 @@ const changeLabel = (e) => {
       </select> 
       <button onClick={addNode}>Add Node</button>
       <button onClick={deleteEdgesOrNodes}>Delete Node/Edge</button>
-      <label>Change Node Name:</label><input type="text" /*value={selectedNode?.data.label} */ onChange={changeLabel} />
-      <input type="number" value={nrOfNodes} onChange={(e) => setNrOfNodes(Number(e.target.value))} /><button onClick={addNrOfNodes}>Add {nrOfNodes} Nodes</button>
+      <label>Change Node Name:</label><input type="text" onChange={changeLabel} />
+      <input type="number" value={nrOfNodes} onChange={(e) => setNrOfNodes(Number(e.target.value))} />
+      <button onClick={addNrOfNodes}>Add {nrOfNodes} Nodes</button>
       <button onClick={handleSave}>Save</button>
 
       <h1>(X: {selectedX}) (Y: {selectedY})</h1>
@@ -123,8 +128,8 @@ const changeLabel = (e) => {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
-          defaultViewport={{ x: window.innerWidth / 2, y: window.innerHeight / 2, zoom: 1 }}
-          onSelectionChange={handleSelectionChange}
+        defaultViewport={{ x: window.innerWidth / 2, y: window.innerHeight / 2, zoom: 1 }}
+        onSelectionChange={handleSelectionChange}
         >
       <Background 
         gap={50}
