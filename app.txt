@@ -4,7 +4,7 @@ import '@xyflow/react/dist/style.css';
 import ResizableNodeSelected from './components/ResizableNodeSelected';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
-import { saveEdges, saveNodes, deleteNodes, deleteEdges, createNewVersion, assignVersionToAllInDB, loadVersionFromDB , getAllVersions} from './neo4j/neo4jService';
+import { saveEdges, saveNodes, loadFlowFromDB, deleteNodes, deleteEdges, createNewVersion, assignVersionToAllInDB, loadVersionFromDB , getAllVersions} from './neo4j/neo4jService';
 import { useFlowHandlers } from './components/useCallback';
 import noLabel from './components/NoLabel';
 
@@ -156,15 +156,15 @@ const changeLabel = (e) => {
  <button onClick={() => setIsInputDisabled(!isInputDisabled)}>
         {isInputDisabled ? "Activate" : "Deactivate"}
       </button>
-
+       <button onClick={handleUndo} disabled={currentVersionIndex >= versions.length - 1}>Undo</button>
+        <button onClick={handleRedo} disabled={currentVersionIndex === 0}>Redo</button>
       <button onClick={addNode}>Add Node</button>
       <button onClick={deleteEdgesOrNodes}>Delete Node/Edge</button>
       <label>Change Node Name:</label><input type="text" onChange={changeLabel} />
       <input type="number" min="0" value={nrOfNodes}  onChange={(e) => setNrOfNodes(Number(e.target.value))} />
       <button onClick={addNrOfNodes}>Add {nrOfNodes} Nodes</button>
       <button onClick={handleSave}>Save</button>
-       <button onClick={handleUndo} disabled={currentVersionIndex >= versions.length - 1}>Undo</button>
-        <button onClick={handleRedo} disabled={currentVersionIndex === 0}>Redo</button>
+
       <h1>(X: {selectedX}) (Y: {selectedY})</h1>
 
     <div style={{ width: '100vw', height: '100vh' }}>

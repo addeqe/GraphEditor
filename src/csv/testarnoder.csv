@@ -1,0 +1,16 @@
+id,label,x,y
+test-case-3,Test Case Password Reset Flow,800.0,300.0
+1,Node 1,0.0,0.0
+2,Node 2,200.0,-200.0
+f39166ef-1daf-473b-8939-32ce6e3d5cbe,Node 15,627.1494342602008,-167.5825537449389
+test-case-1,Test Case Valid Login,800.0,100.0
+test-case-2,Test Case Invalid Login,800.0,200.0
+epic-1,Epic User Auth,808.3704265660301,-154.5946515045573
+feature-1,Feature Login,200.0,150.0
+feature-2,Feature Password Reset,200.0,300.0
+story-1,User Story Log In,350.0,100.0
+story-2,User Story Reset Password,350.0,250.0
+story-3,User Story Auth API,350.0,400.0
+api-auth-spec,API Spec Auth,500.0,350.0
+class-auth-service,SW Class AuthService,650.0,400.0
+class-user-model,SW Class UserModel,650.0,550.0

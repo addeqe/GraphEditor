@@ -1,0 +1,12 @@
+id,type,markerEnd,source,target
+epic-to-feature-1,custom,arrow,epic-1,feature-1
+epic-to-feature-2,custom,arrow,epic-1,feature-2
+feature-to-story-1,custom,arrow,feature-1,story-1
+feature-to-story-2,custom,arrow,feature-2,story-2
+feature-to-story-3,custom,arrow,feature-1,story-3
+story-to-api-spec,custom,arrow,story-3,api-auth-spec
+api-spec-to-class-1,custom,arrow,api-auth-spec,class-auth-service
+api-spec-to-class-2,custom,arrow,api-auth-spec,class-user-model
+story-to-test-case-1,custom,arrow,story-1,test-case-1
+story-to-test-case-2,custom,arrow,story-1,test-case-2
+story-to-test-case-3,custom,arrow,story-2,test-case-3

@@ -18,3 +18,6 @@ const ResizableNodeSelected = ({ data, selected }) => {
 };
  
 export default memo(ResizableNodeSelected);
+
+
+//source: https://github.com/xyflow/xyflow/blob/main/packages/react/src/additional-components/NodeResizer/NodeResizer.tsx

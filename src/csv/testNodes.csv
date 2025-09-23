@@ -1,0 +1,13 @@
+id,label,x,y
+epic-1,Epic User Auth,100.0,50.0
+feature-1,Feature Login,200.0,150.0,""
+feature-2,Feature Password Reset,200.0,300.0,""
+story-1,User Story Log In,350.0,100.0,""
+story-2,User Story Reset Password,350.0,250.0,""
+story-3,User Story Auth API,350.0,400.0,""
+api-auth-spec,API Spec Auth,500.0,350.0,""
+class-auth-service,SW Class AuthService,650.0,400.0,""
+class-user-model,SW Class UserModel,650.0,550.0,""
+test-case-1,Test Case Valid Login,800.0,100.0,""
+test-case-2,Test Case Invalid Login,800.0,200.0,""
+test-case-3,Test Case Password Reset Flow,800.0,300.0,""

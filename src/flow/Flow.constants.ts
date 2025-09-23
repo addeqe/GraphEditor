@@ -36,7 +36,7 @@ export const initialNodes: Node[] = [
         data: { label: "Node 2" },
     },
 ];
-
+const weights = 2;
 export const initialEdges: Edge[] = [
     {
         id: "1-2",
@@ -45,6 +45,11 @@ export const initialEdges: Edge[] = [
         type: "custom",
         markerEnd: {
             type: MarkerType.Arrow
+    },
+        
+    data: {
+        weight: weights,
+        label: weights
         }
     },
 ];
