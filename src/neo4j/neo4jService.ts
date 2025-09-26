@@ -120,74 +120,6 @@ export const deleteEdges = async (edgesToDelete: Edge[]) => {
   }
 };
 
-/* gammal version ska raderas senare
-export const loadFlowFromDB = async (): Promise<{ nodes: Node[], edges: Edge[] }> => {
-  const session = getSession();
-  const nodes: Node[] = [];
-  const edges: Edge[] = [];
-
-  try {
-    const result = await session.run(`
-      MATCH (v:Version)
-      WITH v ORDER BY v.timestamp DESC LIMIT 1
-      MATCH (n:Node)
-      WHERE (n)-[:PART_OF_VERSION]->(v)
-      OPTIONAL MATCH (n)-[r:CONNECTED]->(m)
-      WHERE r.versionId = v.versionId
-      RETURN n, r, m
-    `);
-
-    result.records.forEach(record => {
-      const n = record.get('n').properties;
-      const m = record.get('m')?.properties;
-      const r = record.get('r')?.properties;
-
-      if (!nodes.find(node => node.id === n.id)) {
-        nodes.push({
-          id: String(n.id),
-          position: { x: n.x, y: n.y },
-          data: { label: n.label },
-          type: n.type
-        });
-      }
-
-      if (m && !nodes.find(node => node.id === m.id)) {
-        nodes.push({
-          id: String(m.id),
-          position: { x: m.x, y: m.y },
-          data: { label: m.label },
-          type: m.type
-        });
-      }
-
-if (r) {
-    const markerEndType = r.markerEndType;
-    const markerEnd = markerEndType ? { type: markerEndType } : undefined;//ingen aning varför man måste göra såhär, men det var en lösning som funkade
-    const edgeColor = r.color;
-    const edgeWeight = r.weight;
-
-    edges.push({  
-      id: r.id || `${n.id}-${m.id}`,
-      source: n.id,
-      target: m.id,
-      type: r.type,
-      markerEnd: markerEnd,
-      data: {
-        color: edgeColor,
-        weight: edgeWeight,
-        label: edgeWeight
-      }
-    });
-  }
-    });
-
-    return { nodes, edges };
-
-  } finally {
-    await session.close();
-  }
-};*/
-
 export const loadVersionFromDB = async (versionId) => {
   const session = getSession();
   const nodes: Node[] = [];
@@ -232,7 +164,7 @@ export const loadVersionFromDB = async (versionId) => {
         const markerEnd = markerEndType ? { type: markerEndType } : undefined;
         const edgeColor = r.color;
         const edgeWeight = r.weight;
-        const edgeLabel = r.label;
+        const edgeLabel = r.weight;
 
         edges.push({  
           id: r.id || `${n.id}-${m.id}`,
@@ -282,6 +214,52 @@ export const assignVersionToAllInDB = async (versionId) => {
       SET r.versionId = $versionId
     `, { versionId });
 
+  } finally {
+    await session.close();
+  }
+};
+
+export const saveNewVersion = async (nodes, edges) => {
+  const versionId = await createNewVersion();
+  await saveNodes(nodes, versionId);
+  await saveEdges(edges, versionId);
+  await assignVersionToAllInDB(versionId);
+
+  console.log("Data saved on version:", versionId);
+  
+  return versionId;
+};
+export const importCombinedGraphFromData = async (data) => {
+  const session = getSession();
+  try {
+    await session.run(`
+      UNWIND $data AS row
+      WITH row
+      WHERE row.label IS NOT NULL AND row.label <> ""
+      MERGE (n:Node {id: row.id})
+      SET
+        n.label = row.label,
+        n.x = toFloat(row.x),
+        n.y = toFloat(row.y),
+        n.type = coalesce(row.nodeType, 'default')
+    `, { data });
+
+    await session.run(`
+      UNWIND $data AS row
+      WITH row
+      WHERE row.source IS NOT NULL AND row.source <> ""
+      MATCH (sourceNode:Node {id: row.source})
+      MATCH (targetNode:Node {id: row.target})
+      MERGE (sourceNode)-[r:CONNECTED {id: row.id}]->(targetNode)
+      SET
+        r.type = coalesce(row.edgeType, 'custom'),
+        r.markerEnd = coalesce(row.markerEnd, 'arrow'),
+        r.color = coalesce(row.color, 'default'),
+        r.weight = toFloat(coalesce(row.weight, 0))
+    `, { data });
+
+    console.log("imported sucessful");
+    
   } finally {
     await session.close();
   }

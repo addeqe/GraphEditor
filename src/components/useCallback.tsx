@@ -11,7 +11,7 @@ export const useFlowHandlers = (setNodes, setEdges, selectedEdgeColor, selectedE
     (changes) => setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
     [setEdges]
   );
-  
+  const currentWeight = !isInputDisabled ? selectedEdgeWeight : null;
   const onConnect = useCallback(
     (params) => {
       const newEdge = {
@@ -23,10 +23,10 @@ export const useFlowHandlers = (setNodes, setEdges, selectedEdgeColor, selectedE
         },
         data: {
           color: selectedEdgeColor,
-          weight: !isInputDisabled ? selectedEdgeWeight : null,
-          label: !isInputDisabled ? selectedEdgeWeight : null
+          weight: currentWeight,
+          label: currentWeight
         },
-      }; console.log("edge creaated with weight and color: ", selectedEdgeWeight, selectedEdgeColor);
+      }; console.log("edge created with weight and color: ", selectedEdgeWeight, selectedEdgeColor);
       setEdges((eds) => addEdge(newEdge, eds));
     },
     [setEdges, selectedEdgeColor, selectedEdgeWeight, isInputDisabled]

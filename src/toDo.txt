@@ -1,3 +1,8 @@
-1. fixa attribut på edges
-2. fixa versioning!!!
-3. fixa "size" som attribut för resizableNodes så det kan sparas i databas.
+2. fixa så att man kan dölja alla tools med en pilknapp
+3. fixa så att man kan import och export direkt i webbappen
+4. fixa så att undo funkar med edges
+5. fixa force,hierarichal,circular,grid
+6. property filters, shortest path finder, text search, property filters
+7. checka auth0?
+8. en riktig snap grid
+fixa så att den save varje gång man skapar en ny nod/edge, samt varje gång man väljer en graftyp

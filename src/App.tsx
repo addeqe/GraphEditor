@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect} from 'react';
-import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Position, Background, Controls, NodeResizer, BackgroundVariant, MarkerType} from '@xyflow/react';
+import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Position, Background, Controls, BackgroundVariant, MarkerType} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import ResizableNodeSelected from './components/ResizableNodeSelected';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
-import { saveEdges, saveNodes, deleteNodes, deleteEdges, createNewVersion, assignVersionToAllInDB, loadVersionFromDB , getAllVersions} from './neo4j/neo4jService';
+import { saveEdges, saveNodes, deleteNodes, deleteEdges, createNewVersion, assignVersionToAllInDB, importCombinedGraphFromData ,loadVersionFromDB , getAllVersions, saveNewVersion} from './neo4j/neo4jService';
 import { useFlowHandlers } from './components/useCallback';
 import noLabel from './components/NoLabel';
+import { useForceLayout } from './hooks/useForceLayout';
+import "./App.css";
 
 
 export default function App() {
@@ -16,7 +17,7 @@ export default function App() {
   };
 
   const nodeTypes = {
-    ResizableNodeSelected: ResizableNodeSelected
+  
   };
 
 
@@ -26,21 +27,24 @@ export default function App() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [selectedNodeType, setSelectedNodeType] = useState("default"); 
   const [selectedEdgeColor, setSelectedEdgeColor] = useState("default"); 
+  const [selectedGraphType, setSelectedGraphType] = useState("default"); 
+
   const [selectedEdgeWeight, setSelectedEdgeWeight] = useState(0); 
   const [isInputDisabled, setIsInputDisabled] = useState(true);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(0);
   const [versions, setVersions] = useState([]);
-
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showNavbar, setShowNavbar] = useState(true);
   const { onNodesChange, onEdgesChange, onConnect } = useFlowHandlers(setNodes, setEdges, selectedEdgeColor, selectedEdgeWeight, isInputDisabled);
 
 const addNode = () => {
-    const newNode = {
-      id: crypto.randomUUID(),
-      type: selectedNodeType,
-      position: { x: 0, y: 0 },
-      data: { label: "Node " + (nodes.length + 1) }
-    }
-    setNodes([...nodes, newNode]);
+  const newNode = {
+    id: crypto.randomUUID(),
+    type: selectedNodeType,
+    position: { x: 0, y: 0 },
+    data: { label: "Node " + (nodes.length + 1) }
+  };
+  setNodes([...nodes, newNode]);
   };
   const addNrOfNodes = () => {
     const newNode = [];
@@ -71,20 +75,13 @@ const changeLabel = (e) => {
     )
   );
 };
-
-  const selectedX = selectedNode?.position.x;
-  const selectedY = selectedNode?.position.y;
-  
+/*console.log("selected x:" + selectedNode?.position.x + " selected y:"+selectedNode?.position.y);*/
   const handleSave = async () => {
-     const versionId = await createNewVersion();
-     await saveNodes(nodes, versionId);
-     await saveEdges(edges, versionId);
-    await assignVersionToAllInDB(versionId);
 
-     console.log("saved with version:", versionId);
-  
-     fetchVersions(); 
-   };
+    await saveNewVersion(nodes, edges); 
+    console.log("saved current graph.");
+    fetchVersions(); 
+  };
 
   const handleUndo = () => {
      if (currentVersionIndex < versions.length - 1) {
@@ -136,36 +133,92 @@ const changeLabel = (e) => {
        setVersions(allVersions);
        setCurrentVersionIndex(0); 
      };
+const { runLayout } = useForceLayout(onNodesChange); //forcedirected
+const handleGraphTypeChange = async () => {
+  setIsProcessing(true);
+  try {
+    const finalNodesAfterLayout = await runLayout(nodes, edges);
+
+    await saveNewVersion(finalNodesAfterLayout, edges); //mst göra så för att annars savear den mitt i
+    console.log("Saved");
+
+    await fetchVersions();
+
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setIsProcessing(false);
+  }
+};
+const handleCombinedImport = async () => {
+  const fileInput = document.getElementById("csvfile");
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("chose csv");
+    return;
+  }
+  const file = fileInput.files[0];
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    const csvData = event.target.result;
+    
+    const lines = csvData.trim().split(/\r?\n/);//for both windows, linux and mac
+    const headers = lines[0].split(',').map(h => h.trim());
+    const dataAsObjects = lines.slice(1).map(line => {
+      const values = line.split(',');
+      let obj = {};
+      headers.forEach((header, index) => {
+        obj[header] = (values[index] || "").trim();
+      });
+      return obj;
+    });
+
+    try {
+      await importCombinedGraphFromData(dataAsObjects);
+      fetchVersions(); 
+    } catch (error) {
+      console.error( error);
+    }
+  };
+  reader.readAsText(file);
+};
   
+  const importAndSave = async() =>{
+    handleCombinedImport();
+    handleSave();
+  }
   return (
     <>
-  <label htmlFor="nodeTypes">Node Types:</label>
-  <select id="nodeTypes" value={selectedNodeType} onChange={(e) => setSelectedNodeType(e.target.value)} >
+  <button onClick={() => setShowNavbar(!showNavbar)}>{showNavbar ? '↑' : '↓'}</button>
+      {showNavbar &&
+        <div className="navbar">
+          <input type="file" id="csvfile" accept='.csv' />
+          <button onClick={importAndSave}>Import csv</button>
+          <label htmlFor="graphType">Graph type:</label>
+          <select id="graphType" value={selectedGraphType} onChange={handleGraphTypeChange}>
+            <option value="manual">Manual</option>
+            <option value="forceDirected">Force Directed</option>
+          </select>
+          <label htmlFor="edgeColor">Edge Color:</label>
+          <select id="edgeColor" value={selectedEdgeColor} onChange={(e) => setSelectedEdgeColor(e.target.value)} >
+            <option value="default">Default</option>
+            <option value="red">Red</option>
+          </select>
+          <label>Edge Weight:</label><input type="number" className="input" size={10} disabled={isInputDisabled} value={selectedEdgeWeight} onChange={(e) => setSelectedEdgeWeight(Number(e.target.value))} />
+          <button onClick={() => setIsInputDisabled(!isInputDisabled)}>
+            {isInputDisabled ? "Activate" : "Deactivate"}
+          </button>
 
-  <option value="">Default</option>
-  <option value="ResizableNodeSelected">Resizeable</option>
-      </select> 
-        <label htmlFor="edgeColor">Edge Color:</label>
+          <button onClick={addNode}>Add Node</button>
+          <button onClick={deleteEdgesOrNodes}>Delete Node/Edge</button>
+          <label>Change Node Name:</label><input type="text" onChange={changeLabel} />
+          <input type="number" className="input" min="0" value={nrOfNodes} onChange={(e) => setNrOfNodes(Number(e.target.value))} />
+          <button onClick={addNrOfNodes}>Add {nrOfNodes} Nodes</button>
+          <button onClick={handleSave}>Save</button>
+          <button onClick={handleUndo} disabled={currentVersionIndex >= versions.length - 1}>Undo</button>
+          <button onClick={handleRedo} disabled={currentVersionIndex === 0}>Redo</button>
 
-  <select id="edgeColor" value={selectedEdgeColor} onChange={(e) => setSelectedEdgeColor(e.target.value)} >
-  <option value="default">Default</option>
-  <option value="red">Red</option>
-      </select> 
-
-    <label>Edge Weight:</label><input type="number" disabled={isInputDisabled} value={selectedEdgeWeight} onChange={(e) => setSelectedEdgeWeight(Number(e.target.value))}/>
- <button onClick={() => setIsInputDisabled(!isInputDisabled)}>
-        {isInputDisabled ? "Activate" : "Deactivate"}
-      </button>
-
-      <button onClick={addNode}>Add Node</button>
-      <button onClick={deleteEdgesOrNodes}>Delete Node/Edge</button>
-      <label>Change Node Name:</label><input type="text" onChange={changeLabel} />
-      <input type="number" min="0" value={nrOfNodes}  onChange={(e) => setNrOfNodes(Number(e.target.value))} />
-      <button onClick={addNrOfNodes}>Add {nrOfNodes} Nodes</button>
-      <button onClick={handleSave}>Save</button>
-       <button onClick={handleUndo} disabled={currentVersionIndex >= versions.length - 1}>Undo</button>
-        <button onClick={handleRedo} disabled={currentVersionIndex === 0}>Redo</button>
-      <h1>(X: {selectedX}) (Y: {selectedY})</h1>
+        </div>}
 
     <div style={{ width: '100vw', height: '100vh' }}>
         <ReactFlow
