@@ -24,7 +24,7 @@ export  const axisNodes = [
     { id: 'y-end', position: { x: 0, y: 10000 }, data: { label: '' } },
   ];
 
-export const initialNodes: Node[] = [
+export const initialNodes: Node[] = [/*
     {
         id: "1",
         position: { x: 0, y: 0 },
@@ -35,9 +35,9 @@ export const initialNodes: Node[] = [
         position: { x: 200, y: -200 },
         data: { label: "Node 2" },
     },
-];
+*/];
 const weights = 2;
-export const initialEdges: Edge[] = [
+export const initialEdges: Edge[] = [/*
     {
         id: "1-2",
         source: "1",
@@ -52,5 +52,5 @@ export const initialEdges: Edge[] = [
         label: weights
         }
     },
-];
+*/];
 

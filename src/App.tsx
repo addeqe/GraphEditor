@@ -3,12 +3,11 @@ import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Position, Backg
 import '@xyflow/react/dist/style.css';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
-import { saveEdges, saveNodes, deleteNodes, deleteEdges, createNewVersion, assignVersionToAllInDB, importCombinedGraphFromData ,loadVersionFromDB , getAllVersions, saveNewVersion} from './neo4j/neo4jService';
+import { saveEdges, saveNodes, deleteNodes, deleteEdges, exportGraph, importCombinedGraphFromData ,loadVersionFromDB , getAllVersions, saveNewVersion} from './neo4j/neo4jService';
 import { useFlowHandlers } from './components/useCallback';
 import noLabel from './components/NoLabel';
 import { useForceLayout } from './hooks/useForceLayout';
 import "./App.css";
-
 
 export default function App() {
 
@@ -28,7 +27,7 @@ export default function App() {
   const [selectedNodeType, setSelectedNodeType] = useState("default"); 
   const [selectedEdgeColor, setSelectedEdgeColor] = useState("default"); 
   const [selectedGraphType, setSelectedGraphType] = useState("default"); 
-
+  const [dataForExport, setDataForExport] = useState([]);
   const [selectedEdgeWeight, setSelectedEdgeWeight] = useState(0); 
   const [isInputDisabled, setIsInputDisabled] = useState(true);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(0);
@@ -187,6 +186,40 @@ const handleCombinedImport = async () => {
     handleCombinedImport();
     handleSave();
   }
+
+const handleExportCsv = async () => {
+    try {
+        const data = await exportGraph();
+        
+        if (!data || data.length === 0) {
+            console.log("need something on graph to export");
+            return;
+        }
+        const headers = Object.keys(data[0]);
+        let csvContent = "";
+        csvContent += headers.join(',') + '\n';
+        for (const row of data) {
+            let rowValues = [];
+            for (const header of headers) {
+                let value = row[header];
+                let stringValue = (value === null || value === undefined) ? '' : String(value);
+                rowValues.push(stringValue);
+            }
+            csvContent += rowValues.join(',') + '\n';
+        }
+        const blob = new Blob([csvContent]);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'data.csv'; 
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+        console.log("csv exported");
+        
+    } catch (error) {
+        console.error(error);
+    }
+};
   return (
     <>
   <button onClick={() => setShowNavbar(!showNavbar)}>{showNavbar ? '↑' : '↓'}</button>
@@ -194,6 +227,8 @@ const handleCombinedImport = async () => {
         <div className="navbar">
           <input type="file" id="csvfile" accept='.csv' />
           <button onClick={importAndSave}>Import csv</button>
+<div><button onClick={handleExportCsv}>Download Graph(CSV)</button>
+        </div>
           <label htmlFor="graphType">Graph type:</label>
           <select id="graphType" value={selectedGraphType} onChange={handleGraphTypeChange}>
             <option value="manual">Manual</option>

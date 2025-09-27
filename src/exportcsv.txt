@@ -1,11 +1,30 @@
-MATCH (n:Node)
-RETURN n.id AS id, n.label AS label, n.x AS x, n.y AS y
+MATCH (n)
+WHERE n.id IS NOT NULL
+RETURN
+    n.id AS id,
+    n.label AS label,
+    n.x AS x,
+    n.y AS y,
+    "" AS source,
+    "" AS target,
+    "" AS nodeType,
+    "" AS edgeType,
+    "" AS markerEnd,
+    "" AS color,
+    "" AS weight
 
+UNION ALL
 
-MATCH (source:Node)-[edge:CONNECTED]->(target:Node)
-RETURN 
+MATCH (source)-[edge:CONNECTED]->(target)
+RETURN
     edge.id AS id,
-    edge.type AS type,
-    edge.markerEnd AS markerEnd,
+    "" AS label,
+    "" AS x,
+    "" AS y,
     source.id AS source,
-    target.id AS target
+    target.id AS target,
+    "" AS nodeType,
+    edge.type AS edgeType,
+    edge.markerEnd AS markerEnd,
+    edge.color AS color,
+    edge.weight AS weight

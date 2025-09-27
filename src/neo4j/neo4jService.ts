@@ -264,3 +264,50 @@ export const importCombinedGraphFromData = async (data) => {
     await session.close();
   }
 };
+
+
+export const exportGraph =  async () => {
+  const session = getSession();
+  try {
+      const result = await session.run(
+      `
+      MATCH (n)
+      WHERE n.id IS NOT NULL
+      RETURN
+          n.id AS id,
+          n.label AS label,
+          n.x AS x,
+          n.y AS y,
+          "" AS source,
+          "" AS target,
+          "" AS nodeType,
+          "" AS edgeType,
+          "" AS markerEnd,
+          "" AS color,
+          "" AS weight
+
+      UNION ALL
+
+      MATCH (source)-[edge:CONNECTED]->(target)
+      RETURN
+          edge.id AS id,
+          "" AS label,
+          "" AS x,
+          "" AS y,
+          source.id AS source,
+          target.id AS target,
+          "" AS nodeType,
+          edge.type AS edgeType,
+          edge.markerEnd AS markerEnd,
+          edge.color AS color,
+          edge.weight AS weight`,
+          {
+        }
+    );
+    const data = result.records.map(record => record.toObject());
+    return data;
+    }
+ finally {
+    await session.close();
+  }
+};
