@@ -50,7 +50,7 @@ export const saveNodes = async (nodes: Node[], versionId) => {
   }
 };
 
-export const saveEdges = async (edges: Edge[], versionId) => {
+export const saveEdges = async (edges: Edge[], versionId, relationshipType) => {
   const session = getSession();
   try {
     for (const edge of edges) {
@@ -62,7 +62,7 @@ export const saveEdges = async (edges: Edge[], versionId) => {
       await session.run(
         `
         MATCH (a:Node {id: $source}), (b:Node {id: $target})
-        MERGE (a)-[r:CONNECTED]->(b)
+        MERGE (a)-[r:${relationshipType}]->(b)
         SET r.id = $id, r.type = $type, r.markerEndType = $markerEndType, r.color = $color, r.weight = $weight, r.versionId = $versionId`,
         {
           id: edge.id,
@@ -129,7 +129,7 @@ export const loadVersionFromDB = async (versionId) => {
       MATCH (n:Node)-[:PART_OF_VERSION]->(:Version {versionId: $versionId})
       WITH COLLECT(n) AS versionNodes
       UNWIND versionNodes AS n
-      OPTIONAL MATCH (n)-[r:CONNECTED]->(m)
+      OPTIONAL MATCH (n)-[r:CONNECTED|HAS_CHILD]->(m)
       WHERE m IN versionNodes
       
       RETURN n, r, m
@@ -209,7 +209,7 @@ export const assignVersionToAllInDB = async (versionId) => {
     `, { versionId });
 
     await session.run(`
-      MATCH ()-[r:CONNECTED]-()
+      MATCH ()-[r:CONNECTED|HAS_CHILD]-()
       WHERE r.versionId IS NULL
       SET r.versionId = $versionId
     `, { versionId });
@@ -219,13 +219,13 @@ export const assignVersionToAllInDB = async (versionId) => {
   }
 };
 
-export const saveNewVersion = async (nodes, edges) => {
+export const saveNewVersion = async (nodes, edges, relationshipType) => {
   const versionId = await createNewVersion();
   await saveNodes(nodes, versionId);
-  await saveEdges(edges, versionId);
+  await saveEdges(edges, versionId, relationshipType);
   await assignVersionToAllInDB(versionId);
 
-  console.log("Data saved on version:", versionId);
+  console.log("Data saved on version, relationshipType:", versionId, relationshipType);
   
   return versionId;
 };
@@ -233,16 +233,16 @@ export const importCombinedGraphFromData = async (data) => {
   const session = getSession();
   try {
     await session.run(`
-      UNWIND $data AS row
-      WITH row
-      WHERE row.label IS NOT NULL AND row.label <> ""
-      MERGE (n:Node {id: row.id})
-      SET
-        n.label = row.label,
-        n.x = toFloat(row.x),
-        n.y = toFloat(row.y),
-        n.type = coalesce(row.nodeType, 'default')
-    `, { data });
+        UNWIND $data AS row
+        WITH row
+        WHERE row.label IS NOT NULL AND row.label <> ""
+        MERGE (n:Node {id: row.id})
+        SET
+          n.label = row.label,
+          n.x = coalesce(toFloat(row.x), '0'),
+          n.y = coalesce(toFloat(row.y), '0'),
+          n.type = coalesce(row.nodeType, 'default')
+      `, { data });
 
     await session.run(`
       UNWIND $data AS row
@@ -288,7 +288,7 @@ export const exportGraph =  async () => {
 
       UNION ALL
 
-      MATCH (source)-[edge:CONNECTED]->(target)
+      MATCH (source)-[r:CONNECTED|HAS_CHILD]->(target)
       RETURN
           edge.id AS id,
           "" AS label,

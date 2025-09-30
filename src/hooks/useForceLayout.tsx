@@ -9,6 +9,7 @@ export const useForceLayout = (onNodesChange) => {
       .force('link', forceLink().id(d => d.id).distance(150))
       .force('charge', forceManyBody().strength(-500))
       .force('center', forceCenter())
+      .alphaDecay(0.01)
       .on('tick', () => {
         const changes = simulation.nodes().map(node => ({
           id: node.id,

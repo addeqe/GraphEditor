@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect} from 'react';
-import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Position, Background, Controls, BackgroundVariant, MarkerType} from '@xyflow/react';
+import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Position, Background, Controls, BackgroundVariant, MarkerType, Edge} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
@@ -7,7 +7,11 @@ import { saveEdges, saveNodes, deleteNodes, deleteEdges, exportGraph, importComb
 import { useFlowHandlers } from './components/useCallback';
 import noLabel from './components/NoLabel';
 import { useForceLayout } from './hooks/useForceLayout';
+import { useHierarchicalLayout } from './hooks/useHierarchicalLayout';
 import "./App.css";
+import { option } from 'framer-motion/client';
+
+
 
 export default function App() {
 
@@ -16,9 +20,7 @@ export default function App() {
   };
 
   const nodeTypes = {
-  
   };
-
 
   const [nrOfNodes, setNrOfNodes] = useState(0);
   const [nodes, setNodes] = useState(initialNodes);
@@ -27,14 +29,23 @@ export default function App() {
   const [selectedNodeType, setSelectedNodeType] = useState("default"); 
   const [selectedEdgeColor, setSelectedEdgeColor] = useState("default"); 
   const [selectedGraphType, setSelectedGraphType] = useState("default"); 
+
+  const [selectedEdgeOption, setSelectedEdgeOption] = useState("default"); 
+  const [specificEdgeOption, setSpecificEdgeOption] = useState("default"); 
+  const lowercaseSpecificEdgeOption = specificEdgeOption.toLowerCase();
+
   const [dataForExport, setDataForExport] = useState([]);
   const [selectedEdgeWeight, setSelectedEdgeWeight] = useState(0); 
   const [isInputDisabled, setIsInputDisabled] = useState(true);
+  const [isSnapGridDisabled, setIsSnapGridDisabled] = useState(true);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(0);
   const [versions, setVersions] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showNavbar, setShowNavbar] = useState(true);
   const { onNodesChange, onEdgesChange, onConnect } = useFlowHandlers(setNodes, setEdges, selectedEdgeColor, selectedEdgeWeight, isInputDisabled);
+  const { runLayout: runForceLayout } = useForceLayout(onNodesChange); 
+  const { runLayout: runHierarchicalLayout } = useHierarchicalLayout();
+
 
 const addNode = () => {
   const newNode = {
@@ -77,7 +88,15 @@ const changeLabel = (e) => {
 /*console.log("selected x:" + selectedNode?.position.x + " selected y:"+selectedNode?.position.y);*/
   const handleSave = async () => {
 
-    await saveNewVersion(nodes, edges); 
+  let relationshipType = "CONNECTED";
+  if (selectedGraphType === "hierarchical") {
+    relationshipType = "HAS_CHILD"
+    };
+    if (selectedGraphType === "default") {
+      relationshipType = "CONNECTED"
+    };
+
+    await saveNewVersion(nodes, edges, relationshipType); 
     console.log("saved current graph.");
     fetchVersions(); 
   };
@@ -131,24 +150,33 @@ const changeLabel = (e) => {
        const allVersions = await getAllVersions();
        setVersions(allVersions);
        setCurrentVersionIndex(0); 
-     };
-const { runLayout } = useForceLayout(onNodesChange); //forcedirected
-const handleGraphTypeChange = async () => {
-  setIsProcessing(true);
-  try {
-    const finalNodesAfterLayout = await runLayout(nodes, edges);
+       };
+  
+const handleGraphTypeChange = async (event) => {
+    const layoutType = event.target.value;
+    setSelectedGraphType(layoutType);
+    setIsProcessing(true);
 
-    await saveNewVersion(finalNodesAfterLayout, edges); //mst göra så för att annars savear den mitt i
-    console.log("Saved");
+    let finalNodesAfterLayout = nodes;
 
-    await fetchVersions();
+    try {
+      if (layoutType === "forceDirected") {
+        finalNodesAfterLayout = await runForceLayout(nodes, edges);
+      } else if (layoutType === "hierarchical") {
+        finalNodesAfterLayout = runHierarchicalLayout(nodes, edges);
+      } else {
+        setIsProcessing(false);
+        return;
+      }
+      
+      setNodes(finalNodesAfterLayout); 
+      await saveNewVersion(finalNodesAfterLayout, edges);
+      await fetchVersions();
 
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setIsProcessing(false);
-  }
-};
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 const handleCombinedImport = async () => {
   const fileInput = document.getElementById("csvfile");
   if (!fileInput.files || fileInput.files.length === 0) {
@@ -220,20 +248,48 @@ const handleExportCsv = async () => {
         console.error(error);
     }
 };
+  
+  /*export const saveNodes = async (nodes: Node[], versionId) => {
+    const session = getSession();
+    try {
+      for (const node of nodes) {
+        const nodeType = node.type || "default"
+        if (!node.versionId)
+        { node.versionId = versionId };*/
+  
+  
+  const edgeToDisplay = (edges: Edge[]): Edge[] => {
+    const displayAllEdges = edges;
+    let optionToReturn = displayAllEdges;
+  
+  const displayEdgesByWeight = edges.filter(edge => edge.data?.weight === Number(lowercaseSpecificEdgeOption));
+  const displayEdgesByColor = edges.filter(edge => edge.data?.color === lowercaseSpecificEdgeOption);
+    if (selectedEdgeOption == "color") {
+      optionToReturn = displayEdgesByColor;
+    }
+    if (selectedEdgeOption == "weight") {
+      optionToReturn = displayEdgesByWeight;
+    }
+    console.log(optionToReturn);
+  return optionToReturn;
+};
+
+
+  
   return (
     <>
   <button onClick={() => setShowNavbar(!showNavbar)}>{showNavbar ? '↑' : '↓'}</button>
       {showNavbar &&
         <div className="navbar">
-          <input type="file" id="csvfile" accept='.csv' />
-          <button onClick={importAndSave}>Import csv</button>
-<div><button onClick={handleExportCsv}>Download Graph(CSV)</button>
-        </div>
           <label htmlFor="graphType">Graph type:</label>
           <select id="graphType" value={selectedGraphType} onChange={handleGraphTypeChange}>
             <option value="manual">Manual</option>
             <option value="forceDirected">Force Directed</option>
+            <option value="hierarchical">Hierarchical</option>
           </select>
+          <input type="file" id="csvfile" accept='.csv' />
+          <button onClick={importAndSave}>Import csv</button>
+          <button onClick={handleExportCsv}>Download Graph(CSV)</button>
           <label htmlFor="edgeColor">Edge Color:</label>
           <select id="edgeColor" value={selectedEdgeColor} onChange={(e) => setSelectedEdgeColor(e.target.value)} >
             <option value="default">Default</option>
@@ -244,6 +300,19 @@ const handleExportCsv = async () => {
             {isInputDisabled ? "Activate" : "Deactivate"}
           </button>
 
+
+          <label htmlFor="selectEdgeToDisplay">Edge to display</label>
+          <select id="whatInEdgeToDisplay"  value={selectedEdgeOption} onChange={(e) => setSelectedEdgeOption(e.target.value)} >
+            <option value="default">All</option>
+            <option value="color">Color</option>
+            <option value="weight">Weight</option>
+          </select>
+          {selectedEdgeOption != "default" &&
+          <label>with {selectedEdgeOption}:</label><input type="text" className="input" onChange={(e) => setSpecificEdgeOption(e.target.value)} />
+          }
+
+
+
           <button onClick={addNode}>Add Node</button>
           <button onClick={deleteEdgesOrNodes}>Delete Node/Edge</button>
           <label>Change Node Name:</label><input type="text" onChange={changeLabel} />
@@ -252,13 +321,16 @@ const handleExportCsv = async () => {
           <button onClick={handleSave}>Save</button>
           <button onClick={handleUndo} disabled={currentVersionIndex >= versions.length - 1}>Undo</button>
           <button onClick={handleRedo} disabled={currentVersionIndex === 0}>Redo</button>
-
+          <button onClick={() => setIsSnapGridDisabled(!isSnapGridDisabled)}>
+          {isSnapGridDisabled ? "Snap Grid on" : "Snap Grid off"}
+          </button>
         </div>}
 
     <div style={{ width: '100vw', height: '100vh' }}>
         <ReactFlow
         nodes={[...axisNodes, ...nodes]}
-        edges={[...axisEdges, ...edges]}
+        edges={[...axisEdges, /*...edges,*/ ...edgeToDisplay(edges)]}
+          
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
@@ -267,6 +339,8 @@ const handleExportCsv = async () => {
         fitView
         defaultViewport={{ x: window.innerWidth / 2, y: window.innerHeight / 2, zoom: 1 }}
         onSelectionChange={handleSelectionChange}
+        snapToGrid={isSnapGridDisabled}
+        snapGrid={[50,50]}  
         >
       <Background 
         gap={50}

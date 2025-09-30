@@ -1,5 +1,5 @@
 id,label,x,y,source,target,nodeType,edgeType,markerEnd,color,weight
-epic-1,Epic User Auth,100.0,50.0,,,,,,,
+epic-1,Epic User Auth,,,,,,,,,,,
 feature-1,Feature Login,200.0,150.0,,,,,,,
 feature-2,Feature Password Reset,200.0,300.0,,,,,,,
 story-3,User Story Auth API,350.0,400.0,,,,,,,
