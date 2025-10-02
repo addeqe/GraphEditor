@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect} from 'react';
-import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Position, Background, Controls, BackgroundVariant, MarkerType, Edge} from '@xyflow/react';
+import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Position, Background, Controls, BackgroundVariant, MarkerType, Edge, Node} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
@@ -30,9 +30,16 @@ export default function App() {
   const [selectedEdgeColor, setSelectedEdgeColor] = useState("default"); 
   const [selectedGraphType, setSelectedGraphType] = useState("default"); 
 
+
+  const [selectedEdgeOrNode, setSelectedEdgeOrNode] = useState("default"); 
+  const [selectedNodeOption, setSelectedNodeOption] = useState("default"); 
+
   const [selectedEdgeOption, setSelectedEdgeOption] = useState("default"); 
-  const [specificEdgeOption, setSpecificEdgeOption] = useState("default"); 
+  const [specificEdgeOption, setSpecificEdgeOption] = useState("default");
+  const [specificNodeOption, setSpecificNodeOption] = useState("default"); 
+ 
   const lowercaseSpecificEdgeOption = specificEdgeOption.toLowerCase();
+  const lowercaseSpecificNodeOption = specificNodeOption.toLowerCase();
 
   const [dataForExport, setDataForExport] = useState([]);
   const [selectedEdgeWeight, setSelectedEdgeWeight] = useState(0); 
@@ -170,7 +177,7 @@ const handleGraphTypeChange = async (event) => {
       }
       
       setNodes(finalNodesAfterLayout); 
-      await saveNewVersion(finalNodesAfterLayout, edges);
+      await saveNewVersion(finalNodesAfterLayout, edges, layoutType);
       await fetchVersions();
 
     } finally {
@@ -275,6 +282,18 @@ const handleExportCsv = async () => {
 };
 
 
+
+  const nodeToDisplay = (nodes: Node[]): Node[] => {
+    const displayAllNodes = nodes;
+    let optionToReturn = displayAllNodes;
+  
+  const displayNodesByID = nodes.filter(node => node.data?.label === specificNodeOption);
+    if (selectedNodeOption === "id") {
+      optionToReturn = displayNodesByID;
+    }
+    console.log(optionToReturn);
+  return optionToReturn;
+};
   
   return (
     <>
@@ -301,16 +320,34 @@ const handleExportCsv = async () => {
           </button>
 
 
+          <label>Filter:</label>
+          <select id="edgeOrNode"  value={selectedEdgeOrNode} onChange={(e) => setSelectedEdgeOrNode(e.target.value)} >
+            <option value="default">None</option>
+            <option value="node">Node</option>
+            <option value="edge">Edge</option>
+            <option value="both">Filter both</option>
+          </select>
+
+          {(selectedEdgeOrNode === "edge" || selectedEdgeOrNode === "both") &&  <div>
           <label htmlFor="selectEdgeToDisplay">Edge to display</label>
           <select id="whatInEdgeToDisplay"  value={selectedEdgeOption} onChange={(e) => setSelectedEdgeOption(e.target.value)} >
             <option value="default">All</option>
             <option value="color">Color</option>
             <option value="weight">Weight</option>
-          </select>
-          {selectedEdgeOption != "default" &&
-          <label>with {selectedEdgeOption}:</label><input type="text" className="input" onChange={(e) => setSpecificEdgeOption(e.target.value)} />
-          }
+          </select></div>}
+          {selectedEdgeOption !== "default" &&
+          <div><label>with {selectedEdgeOption}:</label><input type="text" className="input" onChange={(e) => setSpecificEdgeOption(e.target.value)} /></div>}
 
+          {(selectedEdgeOrNode === "node" || selectedEdgeOrNode === "both") &&  <div>
+          <label htmlFor="selectNodeToDisplay">Node to display</label>
+          <select id="whatInNodeToDisplay"  value={selectedNodeOption} onChange={(e) => setSelectedNodeOption(e.target.value)} >
+            <option value="default">All</option>
+            <option value="id">ID</option>
+          </select></div>}
+          {selectedNodeOption !== "default" &&
+          <div><label>with {selectedNodeOption}:</label><input type="text" className="input" onChange={(e) => setSpecificNodeOption(e.target.value)} /></div>}
+
+          
 
 
           <button onClick={addNode}>Add Node</button>
@@ -328,8 +365,8 @@ const handleExportCsv = async () => {
 
     <div style={{ width: '100vw', height: '100vh' }}>
         <ReactFlow
-        nodes={[...axisNodes, ...nodes]}
-        edges={[...axisEdges, /*...edges,*/ ...edgeToDisplay(edges)]}
+        nodes={[...axisNodes, ...nodeToDisplay(nodes)]}
+        edges={[...axisEdges, ...edgeToDisplay(edges)]}
           
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
