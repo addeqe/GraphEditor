@@ -1,6 +1,15 @@
-text search nästa!
+Krav: shortest path
 
-5. fixa circular,grid
-6. property filters, shortest path finder, text search, property filters
-7. checka auth0?
+Om tid: Degree och betweenness, 
+
+Om du har en nod (t.ex. en person i ett socialt nätverk), så är degree antalet direkta länkar till andra noder.
+Exempel:
+En person med 10 vänner har degree = 10.
+En nod utan länkar har degree = 0.
+
+“Hur ofta en nod ligger på den kortaste vägen mellan andra noder.”
+En nod med hög betweenness fungerar som en brygga mellan olika delar av nätverket.
+En person som kopplar ihop två annars separata grupper har hög betweenness.
+
+checka auth0?
 fixa docker

@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect} from 'react';
-import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Position, Background, Controls, BackgroundVariant, MarkerType, Edge, Node} from '@xyflow/react';
+import { useState, useCallback, useEffect, useMemo} from 'react';
+import { ReactFlow,MiniMap, applyNodeChanges, applyEdgeChanges, addEdge, Position, Background, Controls, BackgroundVariant, MarkerType, Edge, Node} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
@@ -8,6 +8,7 @@ import { useFlowHandlers } from './components/useCallback';
 import noLabel from './components/NoLabel';
 import { useForceLayout } from './hooks/useForceLayout';
 import { useHierarchicalLayout } from './hooks/useHierarchicalLayout';
+import { useCircularLayout } from './hooks/useCircularLayout';
 import "./App.css";
 import { option } from 'framer-motion/client';
 
@@ -37,7 +38,9 @@ export default function App() {
   const [selectedEdgeOption, setSelectedEdgeOption] = useState("default"); 
   const [specificEdgeOption, setSpecificEdgeOption] = useState("default");
   const [specificNodeOption, setSpecificNodeOption] = useState("default"); 
- 
+  const [selectedNodeSearch, setSelectedNodeSearch] = useState("default"); 
+
+
   const lowercaseSpecificEdgeOption = specificEdgeOption.toLowerCase();
   const lowercaseSpecificNodeOption = specificNodeOption.toLowerCase();
 
@@ -52,6 +55,7 @@ export default function App() {
   const { onNodesChange, onEdgesChange, onConnect } = useFlowHandlers(setNodes, setEdges, selectedEdgeColor, selectedEdgeWeight, isInputDisabled);
   const { runLayout: runForceLayout } = useForceLayout(onNodesChange); 
   const { runLayout: runHierarchicalLayout } = useHierarchicalLayout();
+  const { runLayout: runCircularLayout } = useCircularLayout();
 
 
 const addNode = () => {
@@ -170,8 +174,11 @@ const handleGraphTypeChange = async (event) => {
       if (layoutType === "forceDirected") {
         finalNodesAfterLayout = await runForceLayout(nodes, edges);
       } else if (layoutType === "hierarchical") {
-        finalNodesAfterLayout = runHierarchicalLayout(nodes, edges);
-      } else {
+        finalNodesAfterLayout = runHierarchicalLayout(nodes, edges);}
+        else if (layoutType === "circular") {
+          finalNodesAfterLayout = runCircularLayout(nodes, edges);
+        }
+       else {
         setIsProcessing(false);
         return;
       }
@@ -256,14 +263,6 @@ const handleExportCsv = async () => {
     }
 };
   
-  /*export const saveNodes = async (nodes: Node[], versionId) => {
-    const session = getSession();
-    try {
-      for (const node of nodes) {
-        const nodeType = node.type || "default"
-        if (!node.versionId)
-        { node.versionId = versionId };*/
-  
   
   const edgeToDisplay = (edges: Edge[]): Edge[] => {
     const displayAllEdges = edges;
@@ -277,24 +276,40 @@ const handleExportCsv = async () => {
     if (selectedEdgeOption == "weight") {
       optionToReturn = displayEdgesByWeight;
     }
-    console.log(optionToReturn);
   return optionToReturn;
 };
 
 
 
-  const nodeToDisplay = (nodes: Node[]): Node[] => {
-    const displayAllNodes = nodes;
-    let optionToReturn = displayAllNodes;
-  
-  const displayNodesByID = nodes.filter(node => node.data?.label === specificNodeOption);
-    if (selectedNodeOption === "id") {
-      optionToReturn = displayNodesByID;
-    }
-    console.log(optionToReturn);
+const nodeToDisplay = useMemo((): Node[] => {
+  const displayAllNodes = nodes;
+  let optionToReturn = displayAllNodes;
+  const displayNodesByID = nodes.filter(
+    node => node.data?.label === specificNodeOption
+  );
+  if (selectedNodeOption === "id") {
+    optionToReturn = displayNodesByID;
+  }
   return optionToReturn;
+}, [nodes, specificNodeOption, selectedNodeOption]); //try for optimization but did absolutely nothing.
+
+
+const nodeToSearch = (nodes: Node[], selectedNodeSearch: string): string => {
+  const filteredNodes = nodes.filter(node => node.data?.label === selectedNodeSearch);
+
+  if (filteredNodes.length === 0) {
+    return "";
+  }
+
+  const lines = filteredNodes.map(node =>
+    `|${node.data?.label}, X: ${node.position.x}, Y: ${node.position.y}|`
+  );
+
+  return lines.join("\n");
 };
-  
+const resultSearch = nodeToSearch(nodes, selectedNodeSearch);
+
+
   return (
     <>
   <button onClick={() => setShowNavbar(!showNavbar)}>{showNavbar ? '↑' : '↓'}</button>
@@ -305,6 +320,8 @@ const handleExportCsv = async () => {
             <option value="manual">Manual</option>
             <option value="forceDirected">Force Directed</option>
             <option value="hierarchical">Hierarchical</option>
+            <option value="circular">Circular</option>
+
           </select>
           <input type="file" id="csvfile" accept='.csv' />
           <button onClick={importAndSave}>Import csv</button>
@@ -312,8 +329,18 @@ const handleExportCsv = async () => {
           <label htmlFor="edgeColor">Edge Color:</label>
           <select id="edgeColor" value={selectedEdgeColor} onChange={(e) => setSelectedEdgeColor(e.target.value)} >
             <option value="default">Default</option>
+            <option value="dark">Dark</option>
             <option value="red">Red</option>
+            <option value="orange">Orange</option>
+            <option value="yellow">Yellow</option>
+            <option value="green">Green</option>
+            <option value="teal">Teal</option>
+            <option value="blue">Blue</option>
+            <option value="purple">Purple</option>
+            <option value="pink">Pink</option>
           </select>
+
+          
           <label>Edge Weight:</label><input type="number" className="input" size={10} disabled={isInputDisabled} value={selectedEdgeWeight} onChange={(e) => setSelectedEdgeWeight(Number(e.target.value))} />
           <button onClick={() => setIsInputDisabled(!isInputDisabled)}>
             {isInputDisabled ? "Activate" : "Deactivate"}
@@ -347,7 +374,7 @@ const handleExportCsv = async () => {
           {selectedNodeOption !== "default" &&
           <div><label>with {selectedNodeOption}:</label><input type="text" className="input" onChange={(e) => setSpecificNodeOption(e.target.value)} /></div>}
 
-          
+          <label> Search:</label><input type="text" className="input" onChange={(e) => setSelectedNodeSearch(e.target.value)} />
 
 
           <button onClick={addNode}>Add Node</button>
@@ -362,10 +389,10 @@ const handleExportCsv = async () => {
           {isSnapGridDisabled ? "Snap Grid on" : "Snap Grid off"}
           </button>
         </div>}
-
+        <p>{resultSearch}</p>
     <div style={{ width: '100vw', height: '100vh' }}>
         <ReactFlow
-        nodes={[...axisNodes, ...nodeToDisplay(nodes)]}
+        nodes={[...axisNodes, ...nodeToDisplay]}
         edges={[...axisEdges, ...edgeToDisplay(edges)]}
           
         nodeTypes={nodeTypes}
@@ -378,7 +405,19 @@ const handleExportCsv = async () => {
         onSelectionChange={handleSelectionChange}
         snapToGrid={isSnapGridDisabled}
         snapGrid={[50,50]}  
+        onlyRenderVisibleElements={true}
         >
+      {nodes.length < 1000 && 
+      <MiniMap 
+      nodeStrokeWidth={200}
+      pannable zoomable
+      position='top-right'
+      nodeStrokeColor={"#3d0e0eff"}
+      nodeBorderRadius={6000}
+      nodeColor={"#3d0e0eff"}
+      bgColor='#fcfcfc'
+      maskColor='#000000ff'
+       />}
       <Background 
         gap={50}
         size={1}
