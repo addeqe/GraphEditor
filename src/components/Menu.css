@@ -1,0 +1,141 @@
+.menu-bar {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: row;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 5px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+}
+
+.menu-item {
+  position: relative;
+}
+
+.menu-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.menu-button:hover {
+  background-color: #f1f3f7;
+}
+
+.submenu {
+  /* Undermenyn är dold som standard */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease, visibility 0s linear 0.2s; /* Tona ut snabbt, dyk upp direkt */
+  
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  width: 240px;
+  border: 1px solid #eee;
+}
+
+/* FIX: Denna klass läggs till med JavaScript för att visa undermenyn */
+.submenu.is-open {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s; /* Se till att den tonas in direkt */
+}
+
+.submenu-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.submenu-button:hover {
+  background-color: #f1f3f7;
+}
+
+.submenu-separator {
+  height: 1px;
+  background-color: #eee;
+  margin: 8px 0;
+}
+
+.submenu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.submenu-item label {
+  white-space: nowrap;
+  color: #3a3c42;
+}
+
+.submenu-input, .submenu-item select {
+  width: 100%;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+}
+
+/* --- Stil för informationsrutor --- */
+
+.info-box {
+  position: absolute;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  max-width: 300px;
+}
+
+.info-box.bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+.info-box.bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.info-box p {
+  margin: 0;
+}
+
+.info-box pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}

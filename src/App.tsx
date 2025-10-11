@@ -3,7 +3,7 @@ import { ReactFlow,MiniMap, applyNodeChanges, applyEdgeChanges, addEdge, Positio
 import '@xyflow/react/dist/style.css';
 import CustomEdge from "./components/CustomEdge"
 import { axisNodes, axisEdges, initialEdges, initialNodes} from './flow/Flow.constants';
-import { saveEdges, saveNodes, deleteNodes, deleteEdges, exportGraph, importCombinedGraphFromData ,loadVersionFromDB , getAllVersions, saveNewVersion} from './neo4j/neo4jService';
+import { saveEdges, saveNodes, deleteNodes, deleteEdges, exportGraph, importCombinedGraphFromData ,loadVersionFromDB , getAllVersions, saveNewVersion, ClearGraph} from './neo4j/neo4jService';
 import { useFlowHandlers } from './components/useCallback';
 import noLabel from './components/NoLabel';
 import { useForceLayout } from './hooks/useForceLayout';
@@ -11,6 +11,7 @@ import { useHierarchicalLayout } from './hooks/useHierarchicalLayout';
 import { useCircularLayout } from './hooks/useCircularLayout';
 import { useShortestPath } from './hooks/useShortestPath';
 import customNode from './components/customNode';
+import Menu from './components/menu';
 
 import "./App.css";
 import CustomEdgeDirected from './components/CustomEdgeDirected';
@@ -32,6 +33,7 @@ export default function App() {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [selectedNodeType, setSelectedNodeType] = useState("default"); 
   const [selectedEdgeColor, setSelectedEdgeColor] = useState("default"); 
   const [selectedGraphType, setSelectedGraphType] = useState("default"); 
@@ -176,9 +178,9 @@ const handleGraphTypeChange = async (event: React.ChangeEvent<HTMLSelectElement>
         if (layoutType === "forceDirected") {
             switch (edge.type) {
                 case 'custom':
-                    return { ...edge, type: 'CustomEdgeDirected' };
+                    return { ...edge, type: 'directed' };
                 case 'noLabel':
-                    return { ...edge, type: 'CustomEdgeDirected' };
+                    return { ...edge, type: 'directed' };
                 default:
                     return edge;
             }
@@ -186,7 +188,7 @@ const handleGraphTypeChange = async (event: React.ChangeEvent<HTMLSelectElement>
               switch (edge.type) {
 
                   case 'directed':
-                      return { ...edge, type: 'CustomEdgeDirected' };
+                      return { ...edge, type: 'directed' };
                   default:
                       return edge;
               }
@@ -253,10 +255,7 @@ const handleCombinedImport = async () => {
   reader.readAsText(file);
 };
   
-  const importAndSave = async() =>{
-    handleCombinedImport();
-    handleSave();
-  }
+
 
 const handleExportCsv = async () => {
     try {
@@ -348,7 +347,9 @@ const nodeToSearch = (nodes: Node[], selectedNodeSearch: string): string => {
 };
 const resultSearch = nodeToSearch(nodes, selectedNodeSearch);
 
-const onSelectionChange = useCallback(({ nodes: selectedNodes }: { nodes: Node[] }) => {
+const onSelectionChange = useCallback(
+  ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
+    
     if (isPathfinding && selectedNodes.length > 0) {
       handleNodeClick(selectedNodes[0].id);
     } else if (selectedNodes.length > 0) {
@@ -356,119 +357,133 @@ const onSelectionChange = useCallback(({ nodes: selectedNodes }: { nodes: Node[]
     } else {
       setSelectedNode(null);
     }
-  }, [isPathfinding, handleNodeClick]);
+
+    if (selectedEdges.length > 0) {
+      setSelectedEdge(selectedEdges[0]);
+    } else {
+      setSelectedEdge(null);
+    }
+  },
+  [isPathfinding, handleNodeClick, setSelectedNode, setSelectedEdge]
+);
+
+const changeSelectedEdgeColor = (newColor: string) => {
+
+    const updatedEdges = edges.map((edge) => {
+      if (edge.id === selectedEdge.id) {
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            color: newColor,
+          },
+        };
+      }
+
+      return edge;
+    });
+
+    setEdges(updatedEdges);
+  };
+
+  const changeSelectedEdgeWeight = (newWeight: number) => {
+
+    const updatedEdges = edges.map((edge) => {
+      if (edge.id === selectedEdge.id) {
+        return {
+          ...edge,
+          type: "custom",
+          data: {
+            ...edge.data,
+            weight: newWeight,
+            label: newWeight,
+          },
+        };
+      }
+
+      return edge;
+    });
+
+    setEdges(updatedEdges);
+  };
+
+  const cleargraph = async()=> {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }
+
+    const importAndSave = async() =>{
+    await handleCombinedImport();
+    handleSave();
+  }
 
 
   const nodesForFlow = useMemo(() => {
-    // Kombinerar dina filtrerade noder med de som ska highlightas för pathfinding
     const nodeMap = new Map(nodeToDisplay.map(n => [n.id, n]));
-    highlightedNodes.forEach(hn => nodeMap.set(hn.id, hn)); // Säkerställer att highlightade noder visas
+    highlightedNodes.forEach(hn => nodeMap.set(hn.id, hn));
     return [...axisNodes, ...Array.from(nodeMap.values())];
   }, [nodeToDisplay, highlightedNodes]);
 
   const edgesForFlow = useMemo(() => {
-    // Samma logik för kanter
     const edgeMap = new Map(edgeToDisplay.map(e => [e.id, e]));
     highlightedEdges.forEach(he => edgeMap.set(he.id, he));
     return [...axisEdges, ...Array.from(edgeMap.values())];
   }, [edgeToDisplay, highlightedEdges]);
   return (
     <>
-  <button onClick={() => setShowNavbar(!showNavbar)}>{showNavbar ? '↑' : '↓'}</button>
-      {showNavbar &&
-        <div className="navbar">
-          <label htmlFor="graphType">Graph type:</label>
-          <select id="graphType" value={selectedGraphType} onChange={handleGraphTypeChange}>
-            <option value="manual">Manual</option>
-            <option value="forceDirected">Force Directed</option>
-            <option value="hierarchical">Hierarchical</option>
-            <option value="circular">Circular</option>
+<Menu
+        // Graph props
+        selectedGraphType={selectedGraphType}
+        handleGraphTypeChange={handleGraphTypeChange}
+        importAndSave={importAndSave}
+        handleExportCsv={handleExportCsv}
+        cleargraph={cleargraph}
+        isSnapGridDisabled={isSnapGridDisabled}
+        setIsSnapGridDisabled={setIsSnapGridDisabled}
+        handleSave={handleSave}
+        handleUndo={handleUndo}
+        handleRedo={handleRedo}
+        // Edge props
+        selectedEdgeColor={selectedEdgeColor}
+        setSelectedEdgeColor={setSelectedEdgeColor}
+        changeSelectedEdgeColor={() => changeSelectedEdgeColor(selectedEdgeColor)}
+        selectedEdgeWeight={selectedEdgeWeight}
+        setSelectedEdgeWeight={setSelectedEdgeWeight}
+        isInputDisabled={isInputDisabled}
+        setIsInputDisabled={setIsInputDisabled}
+        changeSelectedEdgeWeight={() => changeSelectedEdgeWeight(selectedEdgeWeight)}
 
-          </select>
-          <input type="file" id="csvfile" accept='.csv' />
-          <button onClick={importAndSave}>Import csv</button>
-          <button onClick={handleExportCsv}>Download Graph(CSV)</button>
-          <label htmlFor="edgeColor">Edge Color:</label>
-          <select id="edgeColor" value={selectedEdgeColor} onChange={(e) => setSelectedEdgeColor(e.target.value)} >
-            <option value="default">Default</option>
-            <option value="dark">Dark</option>
-            <option value="red">Red</option>
-            <option value="orange">Orange</option>
-            <option value="yellow">Yellow</option>
-            <option value="green">Green</option>
-            <option value="teal">Teal</option>
-            <option value="blue">Blue</option>
-            <option value="purple">Purple</option>
-            <option value="pink">Pink</option>
-          </select>
-           {!isPathfinding && (
-            <button onClick={startPathfinding}>Shortest path</button>
+        // Node props
+        addNode={addNode}
+        addNrOfNodes={addNrOfNodes}
+        nrOfNodes={nrOfNodes}
+        setNrOfNodes={setNrOfNodes}
+        changeLabel={changeLabel}
+        selectedNode={selectedNode}
+
+        // Analyze props
+        startPathfinding={startPathfinding}
+        selectedNodeSearch={selectedNodeSearch}
+        setSelectedNodeSearch={setSelectedNodeSearch}
+      />
+  
+
+       {shortestPath && (
+        <div className="info-box bottom-right">
+          {shortestPath.path.length > 0 ? (
+            <p>Shortest Path: {shortestPath.distance.toFixed(2)}</p>
+          ) : (
+            <p style={{ color: '#d92027' }}>No path found</p>
           )}
-          {isPathfinding && (
-            <div style={{ border: '1px solid lime', padding: '5px', borderRadius: '5px' }}>
-              <p style={{ margin: 0, color: 'lime', fontWeight: 'bold' }}>
-                {startNodeId ? `starting node done. choose end node.` : 'choose start node...'}
-              </p>
-              <button onClick={cancelPathfinding}>Cancel</button>
-            </div>
-          )}
-          {shortestPath && shortestPath.path.length > 0 && (
-             <p style={{color: 'lime'}}>Shortest path: {shortestPath.distance}</p>
-          )}
-          {shortestPath && shortestPath.path.length === 0 && (
-             <p style={{color: 'red'}}>No path found</p>
-          )}
+        </div>
+      )}
 
-          
-          <label>Edge Weight:</label><input type="number" className="input" size={10} disabled={isInputDisabled} value={selectedEdgeWeight} onChange={(e) => setSelectedEdgeWeight(Number(e.target.value))} />
-          <button onClick={() => setIsInputDisabled(!isInputDisabled)}>
-            {isInputDisabled ? "Activate" : "Deactivate"}
-          </button>
-
-
-          <label>Filter:</label>
-          <select id="edgeOrNode"  value={selectedEdgeOrNode} onChange={(e) => setSelectedEdgeOrNode(e.target.value)} >
-            <option value="default">None</option>
-            <option value="node">Node</option>
-            <option value="edge">Edge</option>
-            <option value="both">Filter both</option>
-          </select>
-
-          {(selectedEdgeOrNode === "edge" || selectedEdgeOrNode === "both") &&  <div>
-          <label htmlFor="selectEdgeToDisplay">Edge to display</label>
-          <select id="whatInEdgeToDisplay"  value={selectedEdgeOption} onChange={(e) => setSelectedEdgeOption(e.target.value)} >
-            <option value="default">All</option>
-            <option value="color">Color</option>
-            <option value="weight">Weight</option>
-          </select></div>}
-          {selectedEdgeOption !== "default" &&
-          <div><label>with {selectedEdgeOption}:</label><input type="text" className="input" onChange={(e) => setSpecificEdgeOption(e.target.value)} /></div>}
-
-          {(selectedEdgeOrNode === "node" || selectedEdgeOrNode === "both") &&  <div>
-          <label htmlFor="selectNodeToDisplay">Node to display</label>
-          <select id="whatInNodeToDisplay"  value={selectedNodeOption} onChange={(e) => setSelectedNodeOption(e.target.value)} >
-            <option value="default">All</option>
-            <option value="id">ID</option>
-          </select></div>}
-          {selectedNodeOption !== "default" &&
-          <div><label>with {selectedNodeOption}:</label><input type="text" className="input" onChange={(e) => setSpecificNodeOption(e.target.value)} /></div>}
-
-          <label> Search:</label><input type="text" className="input" onChange={(e) => setSelectedNodeSearch(e.target.value)} />
-
-
-          <button onClick={addNode}>Add Node</button>
-          <button onClick={deleteEdgesOrNodes}>Delete Node/Edge</button>
-          <label>Change Node Name:</label><input type="text" onChange={changeLabel} />
-          <input type="number" className="input" min="0" value={nrOfNodes} onChange={(e) => setNrOfNodes(Number(e.target.value))} />
-          <button onClick={addNrOfNodes}>Add {nrOfNodes} Nodes</button>
-          <button onClick={handleSave}>Save</button>
-          <button onClick={handleUndo} disabled={currentVersionIndex >= versions.length - 1}>Undo</button>
-          <button onClick={handleRedo} disabled={currentVersionIndex === 0}>Redo</button>
-          <button onClick={() => setIsSnapGridDisabled(!isSnapGridDisabled)}>
-          {isSnapGridDisabled ? "Snap Grid on" : "Snap Grid off"}
-          </button>
-        </div>}
-        <p>{resultSearch}</p>
+      {/* FIX: Visar resultat för sökning */}
+      {resultSearch && (
+        <div className="info-box bottom-left">
+          <pre>{resultSearch}</pre>
+        </div>
+      )}
     <div style={{ width: '100vw', height: '100vh' }}>
         <ReactFlow
         nodes={[...axisNodes, ...nodesForFlow]}
