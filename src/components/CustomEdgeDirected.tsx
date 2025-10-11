@@ -1,6 +1,6 @@
-import { EdgeLabelRenderer, BaseEdge, getSmoothStepPath, EdgeProps } from '@xyflow/react';
+import { EdgeLabelRenderer, BaseEdge, getSmoothStepPath, EdgeProps, MarkerType } from '@xyflow/react';
  
-const CustomEdge = ({ id, data, ...props }: EdgeProps) => {
+const CustomEdgeDirected = ({ id, data, ...props }: EdgeProps) => {
   const [edgePath, labelX, labelY] = getSmoothStepPath(props);
   const edgeColor = {
     default: '#b1b1bियत',
@@ -17,11 +17,12 @@ const CustomEdge = ({ id, data, ...props }: EdgeProps) => {
 
   const isPath = data?.isPath;
   const strokeColor = isPath ? 'lime' : (edgeColor[data?.color] || edgeColor.default);
-  const strokeWidth = isPath ? 3 : 1.5;
+  const strokeWidth = isPath ? 4 : 2.5;
 
   return (
     <>
-      <BaseEdge id={id} path={edgePath} style={{ stroke: strokeColor, strokeWidth }} animated={isPath} />
+      <BaseEdge id={id} path={edgePath} style={{ stroke: strokeColor, strokeWidth }} animated={isPath}
+      markerEnd={{type: MarkerType.ArrowClosed, width: 25, height: 25}}/>
       {data.label && (
         <EdgeLabelRenderer>
           <div
@@ -44,4 +45,4 @@ const CustomEdge = ({ id, data, ...props }: EdgeProps) => {
   );
 };
 
-export default CustomEdge;
+export default CustomEdgeDirected;

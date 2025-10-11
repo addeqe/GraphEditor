@@ -1,6 +1,6 @@
 import { Node, Edge, MarkerType } from "@xyflow/react";  
 
-export const axisEdges = [
+export const axisEdges = [/*
     {
       id: 'x-axis',
       source: 'x-start',
@@ -15,14 +15,14 @@ export const axisEdges = [
       style: { stroke: 'black', strokeWidth: 2 },
       animated: false,
     },
-  ];
+  */];
 
-export  const axisNodes = [
+export  const axisNodes = [/*
     { id: 'x-start', position: { x: -10000, y: 0 }, data: { label: '' } },
     { id: 'x-end', position: { x: 10000, y: 0 }, data: { label: '' } },
     { id: 'y-start', position: { x: 0, y: -10000 }, data: { label: '' } },
     { id: 'y-end', position: { x: 0, y: 10000 }, data: { label: '' } },
-  ];
+  */];
 
 export const initialNodes: Node[] = [/*
     {

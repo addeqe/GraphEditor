@@ -9,18 +9,23 @@ import noLabel from './components/NoLabel';
 import { useForceLayout } from './hooks/useForceLayout';
 import { useHierarchicalLayout } from './hooks/useHierarchicalLayout';
 import { useCircularLayout } from './hooks/useCircularLayout';
-import "./App.css";
-import { option } from 'framer-motion/client';
+import { useShortestPath } from './hooks/useShortestPath';
+import customNode from './components/customNode';
 
+import "./App.css";
+import CustomEdgeDirected from './components/CustomEdgeDirected';
 
 
 export default function App() {
 
   const edgeTypes = {
-    custom: CustomEdge, noLabel
+    custom: CustomEdge,
+    noLabel: noLabel,
+    directed: CustomEdgeDirected,
   };
 
   const nodeTypes = {
+    circle: customNode
   };
 
   const [nrOfNodes, setNrOfNodes] = useState(0);
@@ -57,12 +62,11 @@ export default function App() {
   const { runLayout: runHierarchicalLayout } = useHierarchicalLayout();
   const { runLayout: runCircularLayout } = useCircularLayout();
 
-
 const addNode = () => {
   const newNode = {
     id: crypto.randomUUID(),
-    type: selectedNodeType,
     position: { x: 0, y: 0 },
+    type: "circle",
     data: { label: "Node " + (nodes.length + 1) }
   };
   setNodes([...nodes, newNode]);
@@ -72,6 +76,7 @@ const addNode = () => {
     for (let i = 0; i < nrOfNodes; i++) {
       newNode.push({
         id: crypto.randomUUID(),
+        type: "circle",
         position: { x: 0, y: 0 },
         data: { label: "Node " + (nodes.length + i + 1) }
       });
@@ -163,34 +168,58 @@ const changeLabel = (e) => {
        setCurrentVersionIndex(0); 
        };
   
-const handleGraphTypeChange = async (event) => {
+
+const handleGraphTypeChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     const layoutType = event.target.value;
     setSelectedGraphType(layoutType);
-    setIsProcessing(true);
+    const updatedEdges = edges.map(edge => {
+        if (layoutType === "forceDirected") {
+            switch (edge.type) {
+                case 'custom':
+                    return { ...edge, type: 'CustomEdgeDirected' };
+                case 'noLabel':
+                    return { ...edge, type: 'CustomEdgeDirected' };
+                default:
+                    return edge;
+            }
+        } else {
+              switch (edge.type) {
 
-    let finalNodesAfterLayout = nodes;
-
-    try {
-      if (layoutType === "forceDirected") {
-        finalNodesAfterLayout = await runForceLayout(nodes, edges);
-      } else if (layoutType === "hierarchical") {
-        finalNodesAfterLayout = runHierarchicalLayout(nodes, edges);}
-        else if (layoutType === "circular") {
-          finalNodesAfterLayout = runCircularLayout(nodes, edges);
+                  case 'directed':
+                      return { ...edge, type: 'CustomEdgeDirected' };
+                  default:
+                      return edge;
+              }
+            }
         }
-       else {
-        setIsProcessing(false);
-        return;
-      }
-      
-      setNodes(finalNodesAfterLayout); 
-      await saveNewVersion(finalNodesAfterLayout, edges, layoutType);
-      await fetchVersions();
+    );
+    setEdges(updatedEdges);
+
+
+
+    setIsProcessing(true);
+    try {
+        let finalNodesAfterLayout = nodes;
+
+        if (layoutType === "forceDirected") {
+            finalNodesAfterLayout = await runForceLayout(nodes, edges);
+        } else if (layoutType === "hierarchical") {
+            finalNodesAfterLayout = runHierarchicalLayout(nodes, edges);
+        } else if (layoutType === "circular") {
+            finalNodesAfterLayout = runCircularLayout(nodes, edges);
+        } else {
+            setIsProcessing(false);
+            return;
+        }
+
+        setNodes(finalNodesAfterLayout);
+        await saveNewVersion(finalNodesAfterLayout, updatedEdges, layoutType);
 
     } finally {
-      setIsProcessing(false);
+        setIsProcessing(false);
     }
-  };
+};
+
 const handleCombinedImport = async () => {
   const fileInput = document.getElementById("csvfile");
   if (!fileInput.files || fileInput.files.length === 0) {
@@ -263,24 +292,6 @@ const handleExportCsv = async () => {
     }
 };
   
-  
-  const edgeToDisplay = (edges: Edge[]): Edge[] => {
-    const displayAllEdges = edges;
-    let optionToReturn = displayAllEdges;
-  
-  const displayEdgesByWeight = edges.filter(edge => edge.data?.weight === Number(lowercaseSpecificEdgeOption));
-  const displayEdgesByColor = edges.filter(edge => edge.data?.color === lowercaseSpecificEdgeOption);
-    if (selectedEdgeOption == "color") {
-      optionToReturn = displayEdgesByColor;
-    }
-    if (selectedEdgeOption == "weight") {
-      optionToReturn = displayEdgesByWeight;
-    }
-  return optionToReturn;
-};
-
-
-
 const nodeToDisplay = useMemo((): Node[] => {
   const displayAllNodes = nodes;
   let optionToReturn = displayAllNodes;
@@ -294,13 +305,41 @@ const nodeToDisplay = useMemo((): Node[] => {
 }, [nodes, specificNodeOption, selectedNodeOption]); //try for optimization but did absolutely nothing.
 
 
+
+const edgeToDisplay = useMemo((): Edge[] => {
+  const displayAllEdges = edges;
+  let optionToReturn = displayAllEdges;
+  
+  const displayEdgesByWeight = edges.filter(edge => edge.data?.weight === Number(lowercaseSpecificEdgeOption));
+  const displayEdgesByColor = edges.filter(edge => edge.data?.color === lowercaseSpecificEdgeOption);
+    if (selectedEdgeOption == "color") {
+      optionToReturn = displayEdgesByColor;
+    }
+    if (selectedEdgeOption == "weight") {
+      optionToReturn = displayEdgesByWeight;
+    }
+  return optionToReturn;
+}, [edges, specificEdgeOption, selectedEdgeOption]);
+
+const {
+    isPathfinding,
+    startNodeId,
+    shortestPath,
+    startPathfinding,
+    cancelPathfinding,
+    handleNodeClick,
+    highlightedNodes,
+    highlightedEdges, 
+  } = useShortestPath(nodeToDisplay, edgeToDisplay);
+
+
+
 const nodeToSearch = (nodes: Node[], selectedNodeSearch: string): string => {
   const filteredNodes = nodes.filter(node => node.data?.label === selectedNodeSearch);
 
   if (filteredNodes.length === 0) {
     return "";
   }
-
   const lines = filteredNodes.map(node =>
     `|${node.data?.label}, X: ${node.position.x}, Y: ${node.position.y}|`
   );
@@ -309,7 +348,30 @@ const nodeToSearch = (nodes: Node[], selectedNodeSearch: string): string => {
 };
 const resultSearch = nodeToSearch(nodes, selectedNodeSearch);
 
+const onSelectionChange = useCallback(({ nodes: selectedNodes }: { nodes: Node[] }) => {
+    if (isPathfinding && selectedNodes.length > 0) {
+      handleNodeClick(selectedNodes[0].id);
+    } else if (selectedNodes.length > 0) {
+      setSelectedNode(selectedNodes[0]);
+    } else {
+      setSelectedNode(null);
+    }
+  }, [isPathfinding, handleNodeClick]);
 
+
+  const nodesForFlow = useMemo(() => {
+    // Kombinerar dina filtrerade noder med de som ska highlightas för pathfinding
+    const nodeMap = new Map(nodeToDisplay.map(n => [n.id, n]));
+    highlightedNodes.forEach(hn => nodeMap.set(hn.id, hn)); // Säkerställer att highlightade noder visas
+    return [...axisNodes, ...Array.from(nodeMap.values())];
+  }, [nodeToDisplay, highlightedNodes]);
+
+  const edgesForFlow = useMemo(() => {
+    // Samma logik för kanter
+    const edgeMap = new Map(edgeToDisplay.map(e => [e.id, e]));
+    highlightedEdges.forEach(he => edgeMap.set(he.id, he));
+    return [...axisEdges, ...Array.from(edgeMap.values())];
+  }, [edgeToDisplay, highlightedEdges]);
   return (
     <>
   <button onClick={() => setShowNavbar(!showNavbar)}>{showNavbar ? '↑' : '↓'}</button>
@@ -339,6 +401,23 @@ const resultSearch = nodeToSearch(nodes, selectedNodeSearch);
             <option value="purple">Purple</option>
             <option value="pink">Pink</option>
           </select>
+           {!isPathfinding && (
+            <button onClick={startPathfinding}>Shortest path</button>
+          )}
+          {isPathfinding && (
+            <div style={{ border: '1px solid lime', padding: '5px', borderRadius: '5px' }}>
+              <p style={{ margin: 0, color: 'lime', fontWeight: 'bold' }}>
+                {startNodeId ? `starting node done. choose end node.` : 'choose start node...'}
+              </p>
+              <button onClick={cancelPathfinding}>Cancel</button>
+            </div>
+          )}
+          {shortestPath && shortestPath.path.length > 0 && (
+             <p style={{color: 'lime'}}>Shortest path: {shortestPath.distance}</p>
+          )}
+          {shortestPath && shortestPath.path.length === 0 && (
+             <p style={{color: 'red'}}>No path found</p>
+          )}
 
           
           <label>Edge Weight:</label><input type="number" className="input" size={10} disabled={isInputDisabled} value={selectedEdgeWeight} onChange={(e) => setSelectedEdgeWeight(Number(e.target.value))} />
@@ -392,8 +471,8 @@ const resultSearch = nodeToSearch(nodes, selectedNodeSearch);
         <p>{resultSearch}</p>
     <div style={{ width: '100vw', height: '100vh' }}>
         <ReactFlow
-        nodes={[...axisNodes, ...nodeToDisplay]}
-        edges={[...axisEdges, ...edgeToDisplay(edges)]}
+        nodes={[...axisNodes, ...nodesForFlow]}
+        edges={[...axisEdges, ...edgesForFlow]}
           
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -402,7 +481,7 @@ const resultSearch = nodeToSearch(nodes, selectedNodeSearch);
         onConnect={onConnect}
         fitView
         defaultViewport={{ x: window.innerWidth / 2, y: window.innerHeight / 2, zoom: 1 }}
-        onSelectionChange={handleSelectionChange}
+        onSelectionChange={onSelectionChange}
         snapToGrid={isSnapGridDisabled}
         snapGrid={[50,50]}  
         onlyRenderVisibleElements={true}

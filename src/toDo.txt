@@ -1,4 +1,8 @@
-Krav: shortest path
+fixa force directed skiten
+
+Krav: fixa export graph igen.
+bättre search, typ om man söker "1" ska alla nodes med 1 i sig komma fram
+
 
 Om tid: Degree och betweenness, 
 
@@ -10,6 +14,11 @@ En nod utan länkar har degree = 0.
 “Hur ofta en nod ligger på den kortaste vägen mellan andra noder.”
 En nod med hög betweenness fungerar som en brygga mellan olika delar av nätverket.
 En person som kopplar ihop två annars separata grupper har hög betweenness.
+
+
+i toolbar: "node editor, edge editor"
+för pagerank o sånt: neo4j djs data plugin gds https://neo4j.com/docs/graph-data-science/current/installation/
+
 
 checka auth0?
 fixa docker

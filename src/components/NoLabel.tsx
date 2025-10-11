@@ -1,6 +1,6 @@
-import { EdgeLabelRenderer, BaseEdge, getSmoothStepPath } from '@xyflow/react';
+import { BaseEdge, getSmoothStepPath, EdgeProps } from '@xyflow/react';
  
-const noLabel = ({ id, data, ...props }) => {
+const NoLabel = ({ id, data, ...props }: EdgeProps) => {
   const [edgePath] = getSmoothStepPath(props);
   const edgeColor = {
     default: '#b1b1b7',
@@ -15,12 +15,15 @@ const noLabel = ({ id, data, ...props }) => {
     dark: '#2B2B2E'  
   };
 
-  const strokeColor = edgeColor[data.color] || edgeColor["default"];
+  const isPath = data?.isPath;
+  const strokeColor = isPath ? 'lime' : (edgeColor[data?.color] || edgeColor.default);
+  const strokeWidth = isPath ? 3 : 1.5;
+
   return (
     <>
-      <BaseEdge id={id} path={edgePath} style={{stroke:strokeColor}}/>
+      <BaseEdge id={id} path={edgePath} style={{ stroke: strokeColor, strokeWidth }} animated={isPath} />
     </>
   );
 };
-//source: https://github.com/xyflow/xyflow/blob/main/packages/react/src/components/EdgeLabelRenderer/index.tsx
-export default noLabel;
+
+export default NoLabel;
